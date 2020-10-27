@@ -50,4 +50,11 @@ class Fermi_Hubbard:
                                                                     + self.operator_dict["lhopdown"])
                                                                    - (self.operator_dict["lhopup"]
                                                                       + self.operator_dict["lhopdown"]).getH())
-
+    def create_tracking_hamiltonian(self,dynamic_args, expiphi, expiphiconj):
+        dHl = [
+            ["+-|", self.hop_left, expiphi, dynamic_args],  # up hop left
+            ["-+|", self.hop_right, expiphiconj, dynamic_args],  # up hop right
+            ["|+-", self.hop_left, expiphi, dynamic_args],  # down hop left
+            ["|-+", self.hop_right, expiphiconj, dynamic_args],  # down hop right
+        ]
+        self.operator_dict['tracking_H'] = hamiltonian(self.sHl, dHl, basis=self.basis)

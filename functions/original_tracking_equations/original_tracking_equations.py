@@ -10,3 +10,11 @@ def phi_J_track(perimeter_params, current_time, J_target, fermihubbard, psi):
     # Solver is sensitive to whether we specify phi as real or not!
     phi = phi.real
     return phi
+
+def expiphi(current_time, perimeter_params, J_target, fermihubbard, psi):
+
+    return np.exp(-1j * phi_J_track(perimeter_params, current_time, J_target, fermihubbard, psi))
+
+
+def expiphiconj(current_time, perimeter_params, J_target, fermihubbard, psi):
+    return np.exp(1j * phi_J_track(perimeter_params, current_time, J_target, fermihubbard, psi))
