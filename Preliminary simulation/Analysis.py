@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 sys.path.append('../')
 from classes.perimeter_params.tools import parameter_instantiate as hhg
 from classes.unscaled_parameters.unscaledparam import unscaledparam
+from classes.time_param.t_param import time_evolution_params
 
 pltparams = {
     'axes.labelsize': 30,
@@ -31,24 +32,22 @@ lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=
           , a=param.a, pbc=param.pbc)
 
 """setup our evolution time parameters"""
-cycles = 2 # time in cycles of field frequency
-n_steps = int(2e3)
-start = 0
-stop = cycles
-times, delta = np.linspace(start, stop, num=n_steps, endpoint=True, retstep=True)
+t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e3), plotting=1)
 
 """prepare to load our data to be plotted"""
 outfile = './Data/expectations:{}sites-{}up-{}down-{}t0-{}U-{}cycles-{}steps-{}pbc.npz'.format(param.L, param.N_up,
                                                                                                param.N_down, param.t0,
-                                                                                               param.U, cycles, n_steps,
-                                                                                               param.pbc)
+                                                                                               param.U, t_p.cycles,
+                                                                                               t_p.n_steps, param.pbc)
 expectations = np.load(outfile)
 
 """plot out expectations"""
+
+"""Plotting current"""
 plt.figure("Current")
 plt.xlabel("Time (cycles)")
 plt.ylabel("$J(t)$")
 plt.grid(True)
 plt.tight_layout()
-plt.plot(times, expectations['current'])
+plt.plot(t_p.times, expectations['current'])
 plt.show()
