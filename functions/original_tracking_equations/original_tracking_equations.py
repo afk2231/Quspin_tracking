@@ -11,10 +11,24 @@ def phi_J_track(perimeter_params, current_time, J_target, fermihubbard, psi):
     phi = phi.real
     return phi
 
-def expiphi(current_time, perimeter_params, J_target, fermihubbard, psi):
+def expiphi(phi):
 
-    return np.exp(-1j * phi_J_track(perimeter_params, current_time, J_target, fermihubbard, psi))
+    return np.exp(-1j * phi)
 
 
-def expiphiconj(current_time, perimeter_params, J_target, fermihubbard, psi):
-    return np.exp(1j * phi_J_track(perimeter_params, current_time, J_target, fermihubbard, psi))
+def expiphiconj(phi):
+    return np.exp(1j * phi)
+
+def original_tracking_evolution(current_time, psi, fermihubbard, J_target, perimeter_params):
+
+    # tracking_H = - (expiphi(current_time, perimeter_params, J_target, fermihubbard, psi)
+    #                 * fermihubbard.operator_dict['hop_left_op']
+    #                 + expiphiconj(current_time, perimeter_params, J_target, fermihubbard, psi)
+    #                 * fermihubbard.operator_dict['hop_right_op']) + fermihubbard.operator_dict['H_onsite']
+    #
+    # psi_dot = 1j * tracking_H.dot(psi)
+    phi = phi_J_track(perimeter_params, current_time, J_target, fermihubbard, psi)
+    psi_dot = -expiphi(phi) * perimeter_params.t * fermihubbard.operator_dict['hop_left_op'].dot(psi)
+    psi_dot -= expiphiconj(phi) * perimeter_params.t * fermihubbard.operator_dict['hop_right_op'].dot(psi)
+    psi_dot += fermihubbard.operator_dict['H_onsite'].dot(psi)
+    return -1j * psi_dot
