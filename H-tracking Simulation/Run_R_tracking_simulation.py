@@ -1,8 +1,8 @@
 ###############################################################################
-#   Basic simulation used to generate data used for tracking.
-#   Evolves a Fermi-Hubbard lattice subject to a driving gaussian wave.
-#   Dependences include the fermihubbard class, observables class, and
-#   functions in original_evolution_equations file.
+#   H-tracking-esque simulation. Utilizes tracking strategies derived from
+#   Ehrenfest theorems. This simulation purely uses the method derived from
+#   the Ehrenfest theorem for the current operator J, R-tracking.
+#   Used to
 ###############################################################################
 
 from __future__ import print_function, division
@@ -15,8 +15,8 @@ from classes.perimeter_params.tools import parameter_instantiate as hhg  # Used 
 from classes.unscaled_parameters.unscaledparam import unscaledparam
 from classes.time_param.t_param import time_evolution_params
 from classes.observables_class.observables import observables
-from functions.original_tracking_equations.original_tracking_equations import expiphi, expiphiconj, phi_J_track\
-    , original_tracking_evolution
+from functions.original_tracking_equations.original_tracking_equations import phi_J_track
+from functions.H_R_tracking_equations.H_R_evol_eqs import R_tracking_evolution_equation
 from scipy.interpolate import UnivariateSpline
 import psutil
 import numpy as np  # general math functions
@@ -61,28 +61,33 @@ FHM = Fermi_Hubbard(lat, t_p.cycles)
 """get inital energy and state"""
 ti = time()
 E, psi_0 = FHM.operator_dict['ham_init'].eigsh(k=1, which='SA')
-psi_t = np.squeeze(psi_0)
+gamma_t = np.append(np.squeeze(psi_0), 0.0)
 print("Initial state and energy calculated. It took {:.2f} seconds to calculate".format(time() - ti))
 print("Ground state energy was calculated to be {:.2f}".format(E[0]))
 
 """create our observables class"""
-obs = observables(psi_t, J_target(0.0), phi_J_track(lat, 0.0, J_target, FHM, psi_t), FHM)
+obs = observables(gamma_t[:-1], J_target(0.0), phi_J_track(lat, 0.0, J_target, FHM, gamma_t[:-1]), FHM)
 
-"""evolve that energy and state"""
+"""create our commutator operator with the hamiltonian H and the left hopping operator K"""
+
+FHM.create_commutator()
+
+"""Start our evolution"""
 
 for newtime in tqdm(t_p.times[:-1]):
     solver_args = dict(atol=1e-12)
-    psi_t = evolve(v0=psi_t, t0=newtime, times=np.array([newtime + t_p.delta]), f=original_tracking_evolution,
-                   f_params=[FHM, J_target, lat], **solver_args)
-    psi_t = psi_t.reshape(-1)
-    obs.append_observables(psi_t, phi_J_track(lat, newtime + t_p.delta, J_target, FHM, psi_t))
+    gamma_t = evolve(v0=gamma_t, t0=newtime, times=np.array([newtime + t_p.delta]), f=R_tracking_evolution_equation,
+                     f_params=[FHM, obs, J_target], solver_name='dop853', **solver_args)
+    gamma_t = gamma_t.reshape(-1)
+    phi_t = obs.phi_init + np.angle(FHM.operator_dict['hop_left_op'].expt_value(gamma_t[:-1])) - gamma_t[-1]
+    obs.append_observables(gamma_t[:-1], phi_t)
 
 """save all observables to a file"""
-outfile = './Data/expectations:{}sites-{}up-{}down-{}t0-{}U-{}cycles-{}steps-{}pbc:a_scale={:.2f}-J_scale={:.2f}.npz'.\
-    format(param.L, param.N_up, param.N_down, param.t0, param.U, t_p.cycles, t_p.n_steps, param.pbc, param.a_scale
-           , param.J_scale)
+outfile = './Data/expectations:{}sites-{}up-{}down-{}t0-{}U-{}cycles-{}steps-{}pbc:a_scale={:.2f}-J_scale={:.2f}' \
+          '-method={}.npz'.format(param.L, param.N_up, param.N_down, param.t0, param.U, t_p.cycles, t_p.n_steps,
+                                  param.pbc, param.a_scale, param.J_scale, 'R_tracking')
 
-obs.save_observables(expectations)
+obs.save_observables(expectations, method='R_tracking')
 print('Saving our expectations.')
 ti = time()
 np.savez(outfile, **expectations)

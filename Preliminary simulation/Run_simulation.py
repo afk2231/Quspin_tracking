@@ -36,7 +36,7 @@ lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=
           , a=param.a, pbc=param.pbc)
 
 """setup our evolution time parameters"""
-t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e3))
+t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e4))
 
 """setup quspin operators and lists"""
 FHM = Fermi_Hubbard(lat, t_p.cycles)

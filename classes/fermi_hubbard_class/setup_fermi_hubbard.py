@@ -1,5 +1,5 @@
 from quspin.basis import spinful_fermion_basis_1d  # Hilbert space basis
-from quspin.operators import hamiltonian
+from quspin.operators import hamiltonian, commutator
 from functions.original_evolution_equations.evol_eqs import phi
 from functions.original_tracking_equations.original_tracking_equations import expiphi as expiphi_T
 from functions.original_tracking_equations.original_tracking_equations import expiphiconj as expiphiconj_T
@@ -54,3 +54,5 @@ class Fermi_Hubbard:
                                                                       + self.operator_dict["lhopdown"]).getH())
         self.perimeter_params = perimeter_params
 
+    def create_commutator(self):
+        self.operator_dict['commutator_HK'] = commutator(self.operator_dict['H_onsite'], self.operator_dict['hop_left_op'])
