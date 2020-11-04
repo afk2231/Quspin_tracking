@@ -74,7 +74,7 @@ FHM.create_number_operator()
 FHM.create_current_operator()
 
 """create our observables class"""
-obs = observables(gamma_t[:-1], J_target(0.0), phi_J_track(lat, 0.0, J_target, FHM, gamma_t[:-1]), FHM)
+obs = observables(gamma_t[:-1], J_target(0.0), phi_J_track(lat, 0.0, J_target, FHM, gamma_t[:-1]), FHM, continuity=1)
 
 """create our commutator operator with the hamiltonian H and the left hopping operator K"""
 

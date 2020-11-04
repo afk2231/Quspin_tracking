@@ -8,7 +8,7 @@ class observables:
     # Note: we can alternatively only save phi and psi within this and use the obs_vs_time function given in the quspin
     #   package to calculate any expectation. However, since I had trouble with using phi as a dynamic parameter for
     #   operators in the original tracking strategy, I'll just leave it be for now.
-    def __init__(self, psi_init, J_init, phi_init, fermihubbard):
+    def __init__(self, psi_init, J_init, phi_init, fermihubbard, continuity=0):
         self.fermihubbard = fermihubbard
         self.neighbour = [fermihubbard.operator_dict['hop_left_op'].expt_value(psi_init),]
         self.current = [J_init,]
@@ -21,14 +21,16 @@ class observables:
         self.number = [self.fermihubbard.perimeter_params.nup + self.fermihubbard.perimeter_params.ndown,]
         self.numbersite = [[], ]
         self.currentsite = [[], ]
-        for _ in range(self.fermihubbard.perimeter_params.nx - 1):
-            self.numbersite.append([])
-            self.currentsite.append([])
-        for _ in range(self.fermihubbard.perimeter_params.nx):
-            self.numbersite[_] = [self.fermihubbard.operator_dict["num"+str(_)].expt_value(psi_init),]
-            K_t = expiphi(phi_init) * self.fermihubbard.operator_dict["K" + str(_)].expt_value(psi_init)
-            self.currentsite[_] = [-1j * self.fermihubbard.perimeter_params.t * self.fermihubbard.perimeter_params.a
-                                   * (K_t - K_t.conj()), ]
+        self.continuity = continuity
+        if self.continuity:
+            for _ in range(self.fermihubbard.perimeter_params.nx - 1):
+                self.numbersite.append([])
+                self.currentsite.append([])
+            for _ in range(self.fermihubbard.perimeter_params.nx):
+                self.numbersite[_] = [self.fermihubbard.operator_dict["num"+str(_)].expt_value(psi_init),]
+                K_t = expiphi(phi_init) * self.fermihubbard.operator_dict["K" + str(_)].expt_value(psi_init)
+                self.currentsite[_] = [-1j * self.fermihubbard.perimeter_params.t * self.fermihubbard.perimeter_params.a
+                                       * (K_t - K_t.conj()), ]
         self.add_var = dict()
 
     def append_observables(self, psi, phi):
@@ -39,12 +41,13 @@ class observables:
                            * (expiphi(phi) * self.neighbour[-1] + expiphiconj(phi) * self.neighbour[-1].conj())
                            + self.fermihubbard.operator_dict['H_onsite'].expt_value(psi))
         self.phi.append(phi)
-        self.number.append(self.fermihubbard.operator_dict['n'].expt_value(psi))
-        for _ in range(self.fermihubbard.perimeter_params.nx):
-            self.numbersite[_].append(self.fermihubbard.operator_dict["num"+str(_)].expt_value(psi))
-            K_t = expiphi(phi) * self.fermihubbard.operator_dict["K" + str(_)].expt_value(psi)
-            self.currentsite[_].append(-1j * self.fermihubbard.perimeter_params.t * self.fermihubbard.perimeter_params.a
-                                   * (K_t - K_t.conj()))
+        if self.continuity:
+            self.number.append(self.fermihubbard.operator_dict['n'].expt_value(psi))
+            for _ in range(self.fermihubbard.perimeter_params.nx):
+                self.numbersite[_].append(self.fermihubbard.operator_dict["num"+str(_)].expt_value(psi))
+                K_t = expiphi(phi) * self.fermihubbard.operator_dict["K" + str(_)].expt_value(psi)
+                self.currentsite[_].append(-1j * self.fermihubbard.perimeter_params.t * self.fermihubbard.perimeter_params.a
+                                       * (K_t - K_t.conj()))
 
 
     def save_observables(self, expectation_dict, method=''):
@@ -53,9 +56,10 @@ class observables:
         expectation_dict["tracking_neighbour" + method] = self.neighbour
         expectation_dict["tracking_energy" + method] = self.energy
         expectation_dict["tracking_pnumber" + method] = self.number
-        for _ in range(self.fermihubbard.perimeter_params.nx):
-            expectation_dict["tracking_pnumbersite" + str(_) + method] = self.numbersite[_]
-            expectation_dict["tracking_pcurrentsite" + str(_) + method] = self.currentsite[_]
+        if self.continuity:
+            for _ in range(self.fermihubbard.perimeter_params.nx):
+                expectation_dict["tracking_pnumbersite" + str(_) + method] = self.numbersite[_]
+                expectation_dict["tracking_pcurrentsite" + str(_) + method] = self.currentsite[_]
 
     def switch_tracking_methods(self, method, fermihubbard, psi, J_target):
         if method == "R2H":

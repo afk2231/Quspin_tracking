@@ -110,6 +110,21 @@ plt.tight_layout()
 plt.plot(t_p.times, np.gradient(expectations['tracking_pnumber_R_tracking'], t_p.delta))
 plt.show()
 
+plt.figure("Nj")
+for _ in range(lat.nx - 1):
+    plt.subplot(int(f"{lat.nx}{1}{_ + 1}"))
+    plt.ylabel("$\\langle N \\rangle$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, expectations["tracking_pnumbersite" + str(_) + "_R_tracking"])
+if lat.pbc:
+    plt.subplot(int(f"{lat.nx}{1}{lat.nx}"))
+    plt.xlabel("Time (cycles)")
+    plt.ylabel("$\\langle N \\rangle$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, expectations["tracking_pnumbersite5_R_tracking"])
+
 """Continuity checks"""
 plt.figure("Continuity Check")
 for _ in range(lat.nx - 1):
