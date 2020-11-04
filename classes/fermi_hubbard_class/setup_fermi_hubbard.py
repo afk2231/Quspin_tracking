@@ -55,4 +55,22 @@ class Fermi_Hubbard:
         self.perimeter_params = perimeter_params
 
     def create_commutator(self):
-        self.operator_dict['commutator_HK'] = commutator(self.operator_dict['H_onsite'], self.operator_dict['hop_left_op'])
+        self.operator_dict['commutator_HK'] = commutator(self.operator_dict['H_onsite'],
+                                                         self.operator_dict['hop_left_op'])
+
+    def create_number_operator(self):
+        num_list = [[1, _] for _ in range(self.perimeter_params.nx)]
+        self.operator_dict['n'] = hamiltonian([["n|", num_list], ["|n", num_list]], [], basis=self.basis)
+        for _ in range(self.perimeter_params.nx):
+            self.operator_dict['num'+str(_)] = hamiltonian([["n|", [[1, _], ]], ["|n", [[1, _], ]]], [],
+                                                           basis=self.basis)
+
+    def create_current_operator(self):
+        no_checks = dict(check_pcon=False, check_symm=False, check_herm=False)
+        for _ in range(self.perimeter_params.nx - 1):
+            self.operator_dict["K"+str(_)] = hamiltonian([["+-|", [[1, _, _ + 1], ]], ["|+-", [[1, _, _ + 1], ]]],
+                                                         [], basis=self.basis, **no_checks)
+        if self.perimeter_params.pbc:
+            self.operator_dict["K"+str(self.perimeter_params.nx - 1)] = hamiltonian(
+                [["+-|", [[1, self.perimeter_params.nx - 1, 0], ]], ["|+-", [[1, self.perimeter_params.nx - 1, 0], ]]],
+                [], basis=self.basis, **no_checks)

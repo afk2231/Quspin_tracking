@@ -23,7 +23,7 @@ plt.rcParams.update(pltparams)
 
 """Generate our class for the unscaled parameters"""
 """these are primarily used for saving our data"""
-param = unscaledparam(L=6, t0=0.52, U=0, pbc=True, field=32.9, F0=3, a=4, a_scale=1, J_scale=1, tracking=1)
+param = unscaledparam(L=6, t0=0.52, U=1, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
 
 """generating our class of scaled parameters"""
 """this is used for most of the calculations"""
@@ -31,7 +31,7 @@ lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=
           , a=param.a, pbc=param.pbc)
 
 """setup our evolution time parameters"""
-t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e3), plotting=1)
+t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e4), plotting=1)
 
 """prepare to load our data to be plotted"""
 outfile = './Data/expectations:{}sites-{}up-{}down-{}t0-{}U-{}cycles-{}steps-{}pbc:a_scale={:.2f}-J_scale={:.2f}' \
@@ -48,7 +48,7 @@ plt.ylabel("$\\Phi(t)$")
 plt.grid(True)
 plt.tight_layout()
 plt.plot(t_p.times, expectations['phi'])
-plt.plot(t_p.times, expectations['tracking_phiR_tracking'], ".")
+plt.plot(t_p.times, expectations['tracking_phi_R_tracking'], ".")
 plt.show()
 
 """Plotting current"""
@@ -58,7 +58,7 @@ plt.ylabel("$J(t)$")
 plt.grid(True)
 plt.tight_layout()
 plt.plot(t_p.times, expectations['current'])
-plt.plot(t_p.times, expectations['tracking_currentR_tracking'], ".")
+plt.plot(t_p.times, expectations['tracking_current_R_tracking'], ".")
 plt.show()
 
 """Plotting energy"""
@@ -68,18 +68,18 @@ plt.ylabel("$E(t)$")
 plt.grid(True)
 plt.tight_layout()
 plt.plot(t_p.times, expectations['H'])
-plt.plot(t_p.times, expectations['tracking_energyR_tracking'], ".")
+plt.plot(t_p.times, expectations['tracking_energy_R_tracking'], ".")
 plt.show()
 
-"""Plotting R"""
-plt.figure("R")
-plt.xlabel("Time (cycles)")
-plt.ylabel("$R(t)$")
-plt.grid(True)
-plt.tight_layout()
-plt.plot(t_p.times, np.abs(expectations['hop_left_op']))
-plt.plot(t_p.times, np.abs(expectations['tracking_neighbourR_tracking']), ".")
-plt.show()
+# """Plotting R"""
+# plt.figure("R")
+# plt.xlabel("Time (cycles)")
+# plt.ylabel("$R(t)$")
+# plt.grid(True)
+# plt.tight_layout()
+# plt.plot(t_p.times, np.abs(expectations['hop_left_op']))
+# plt.plot(t_p.times, np.abs(expectations['tracking_neighbour_R_tracking']), ".")
+# plt.show()
 
 """Plotting theta"""
 plt.figure("angle")
@@ -88,15 +88,44 @@ plt.ylabel("$\\theta(t)$")
 plt.grid(True)
 plt.tight_layout()
 plt.plot(t_p.times, np.angle(expectations['hop_left_op']))
-plt.plot(t_p.times, np.angle(expectations['tracking_neighbourR_tracking']), ".")
+plt.plot(t_p.times, np.angle(expectations['tracking_neighbour_R_tracking']), ".")
 plt.show()
 
-"""Plotting theta"""
-plt.figure("real")
+# """Plotting theta"""
+# plt.figure("real")
+# plt.xlabel("Time (cycles)")
+# plt.ylabel("$NN_r(t)$")
+# plt.grid(True)
+# plt.tight_layout()
+# plt.plot(t_p.times, expectations['hop_left_op'].real)
+# plt.plot(t_p.times, expectations['tracking_neighbour_R_tracking'].real, ".")
+# plt.show()
+
+"""Plotting number of particles"""
+plt.figure("N")
 plt.xlabel("Time (cycles)")
-plt.ylabel("$NN_r(t)$")
+plt.ylabel("$\\frac{d \\langle N \\rangle}{dt}$")
 plt.grid(True)
 plt.tight_layout()
-plt.plot(t_p.times, expectations['hop_left_op'].real)
-plt.plot(t_p.times, expectations['tracking_neighbourR_tracking'].real, ".")
+plt.plot(t_p.times, np.gradient(expectations['tracking_pnumber_R_tracking'], t_p.delta))
 plt.show()
+
+"""Continuity checks"""
+plt.figure("Continuity Check")
+for _ in range(lat.nx - 1):
+    plt.subplot(int(f"{lat.nx}{1}{_ + 1}"))
+    plt.ylabel("$\\frac{d \\langle N \\rangle}{d t}$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, np.gradient(expectations["tracking_pnumbersite" + str(_) + "_R_tracking"], t_p.delta))
+    plt.plot(t_p.times, (expectations['tracking_pcurrentsite' + str(_ + 1) + "_R_tracking"]
+                         - expectations['tracking_pcurrentsite' + str(_) + "_R_tracking"])/lat.a)
+if lat.pbc:
+    plt.subplot(int(f"{lat.nx}{1}{lat.nx}"))
+    plt.xlabel("Time (cycles)")
+    plt.ylabel("$\\frac{d \\langle N \\rangle}{dt}$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, np.gradient(expectations["tracking_pnumbersite5_R_tracking"], t_p.delta))
+    plt.plot(t_p.times, (expectations['tracking_pcurrentsite0_R_tracking']
+                         - expectations['tracking_pcurrentsite5_R_tracking']) / lat.a)

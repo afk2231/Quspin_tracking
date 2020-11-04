@@ -18,6 +18,17 @@ class observables:
         # self.psi = psi_init
         self.phi_init = phi_init
         self.boundary_term = 0.0
+        self.number = [self.fermihubbard.perimeter_params.nup + self.fermihubbard.perimeter_params.ndown,]
+        self.numbersite = [[], ]
+        self.currentsite = [[], ]
+        for _ in range(self.fermihubbard.perimeter_params.nx - 1):
+            self.numbersite.append([])
+            self.currentsite.append([])
+        for _ in range(self.fermihubbard.perimeter_params.nx):
+            self.numbersite[_] = [self.fermihubbard.operator_dict["num"+str(_)].expt_value(psi_init),]
+            K_t = expiphi(phi_init) * self.fermihubbard.operator_dict["K" + str(_)].expt_value(psi_init)
+            self.currentsite[_] = [-1j * self.fermihubbard.perimeter_params.t * self.fermihubbard.perimeter_params.a
+                                   * (K_t - K_t.conj()), ]
         self.add_var = dict()
 
     def append_observables(self, psi, phi):
@@ -28,12 +39,23 @@ class observables:
                            * (expiphi(phi) * self.neighbour[-1] + expiphiconj(phi) * self.neighbour[-1].conj())
                            + self.fermihubbard.operator_dict['H_onsite'].expt_value(psi))
         self.phi.append(phi)
+        self.number.append(self.fermihubbard.operator_dict['n'].expt_value(psi))
+        for _ in range(self.fermihubbard.perimeter_params.nx):
+            self.numbersite[_].append(self.fermihubbard.operator_dict["num"+str(_)].expt_value(psi))
+            K_t = expiphi(phi) * self.fermihubbard.operator_dict["K" + str(_)].expt_value(psi)
+            self.currentsite[_].append(-1j * self.fermihubbard.perimeter_params.t * self.fermihubbard.perimeter_params.a
+                                   * (K_t - K_t.conj()))
+
 
     def save_observables(self, expectation_dict, method=''):
         expectation_dict["tracking_current" + method] = self.current
         expectation_dict["tracking_phi" + method] = self.phi
         expectation_dict["tracking_neighbour" + method] = self.neighbour
         expectation_dict["tracking_energy" + method] = self.energy
+        expectation_dict["tracking_pnumber" + method] = self.number
+        for _ in range(self.fermihubbard.perimeter_params.nx):
+            expectation_dict["tracking_pnumbersite" + str(_) + method] = self.numbersite[_]
+            expectation_dict["tracking_pcurrentsite" + str(_) + method] = self.currentsite[_]
 
     def switch_tracking_methods(self, method, fermihubbard, psi, J_target):
         if method == "R2H":

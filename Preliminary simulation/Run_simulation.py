@@ -29,7 +29,7 @@ t_init = time()
 np.__config__.show()
 
 """Generate our class for the unscaled parameters. These are primarily used for saving our data"""
-param = unscaledparam(L=6, t0=0.52, U=0, pbc=True, field=32.9, F0=3, a=4)
+param = unscaledparam(L=6, t0=0.52, U=1.0, pbc=True, field=32.9, F0=10, a=4)
 
 """Generating our class of scaled parameters. This is used for most of the calculations"""
 lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=0, U=param.U, t=param.t0, F0=param.F0

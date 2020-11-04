@@ -23,9 +23,9 @@ def R_tracking_evolution_equation(current_time, gamma, fermihubbard, observables
     psi_dot = -1j * psi_dot
 
     y_dot = ((J_target.derivative())(current_time)
-             /(2 * fermihubbard.perimeter_params.a * fermihubbard.perimeter_params.t) - R_dot
-             * (D.real*np.sin(phi) - D.imag * np.cos(phi))/R)\
-            /(D.real * np.cos(phi) + D.imag * np.sin(phi))
+             /(2 * fermihubbard.perimeter_params.a * fermihubbard.perimeter_params.t) + R_dot
+             * np.sin(phi - theta))\
+            /(R * np.cos(phi - theta))
 
     gamma_dot = np.append(psi_dot, y_dot)
 
