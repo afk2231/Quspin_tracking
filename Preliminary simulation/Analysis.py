@@ -24,7 +24,7 @@ plt.rcParams.update(pltparams)
 
 """Generate our class for the unscaled parameters"""
 """these are primarily used for saving our data"""
-param = unscaledparam(L=6, t0=0.52, U=0, pbc=True, field=32.9, F0=3, a=4)
+param = unscaledparam(L=6, t0=0.52, U=0.5, pbc=False, field=32.9, F0=10, a=4)
 
 """generating our class of scaled parameters"""
 """this is used for most of the calculations"""
@@ -32,7 +32,7 @@ lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=
           , a=param.a, pbc=param.pbc)
 
 """setup our evolution time parameters"""
-t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e3), plotting=1)
+t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(1e4), plotting=1)
 
 """prepare to load our data to be plotted"""
 outfile = './Data/expectations:{}sites-{}up-{}down-{}t0-{}U-{}cycles-{}steps-{}pbc.npz'.format(param.L, param.N_up,
@@ -88,3 +88,107 @@ plt.grid(True)
 plt.tight_layout()
 plt.plot(t_p.times, np.angle(expectations['hop_left_op']))
 plt.show()
+
+plt.figure("Nj")
+for j in range(lat.nx - 1):
+    plt.subplot(int(f"{lat.nx}{1}{j + 1}"))
+    plt.ylabel("$\\langle N \\rangle$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, expectations["num" + str(j)])
+if lat.pbc:
+    plt.subplot(int(f"{lat.nx}{1}{lat.nx}"))
+    plt.xlabel("Time (cycles)")
+    plt.ylabel("$\\langle N \\rangle$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, expectations["num" + str(lat.nx -1)])
+
+plt.figure("Jj")
+for j in range(lat.nx - 1):
+    plt.subplot(int(f"{lat.nx}{1}{j + 1}"))
+    plt.ylabel("$\\langle J \\rangle$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, expectations["current" + str(j)])
+if lat.pbc:
+    plt.subplot(int(f"{lat.nx}{1}{lat.nx}"))
+    plt.xlabel("Time (cycles)")
+    plt.ylabel("$\\langle J \\rangle$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, expectations["current" + str(lat.nx -1)])
+
+plt.figure("J comparison")
+J = 0
+for j in range(lat.nx - 1):
+    J += expectations["current" + str(j)]
+if lat.pbc:
+    J += expectations["current" + str(lat.nx -1)]
+plt.xlabel("Time (cycles)")
+plt.ylabel("$\\langle J \\rangle$")
+plt.grid(True)
+plt.tight_layout()
+plt.plot(t_p.times, expectations['current'])
+plt.plot(t_p.times, J)
+
+plt.figure("Continuity Check")
+if lat.pbc:
+    plt.subplot(int(f"{lat.nx}{1}{1}"))
+    plt.xlabel("Time (cycles)")
+    plt.ylabel("$\\frac{d \\langle N \\rangle}{dt}$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, np.gradient(expectations["num" + str(0)], t_p.delta / lat.freq))
+    plt.plot(t_p.times, -(expectations['current' + str(0)]
+                         - expectations['current' + str(lat.nx - 1)]) / lat.a)
+    for j in range(1, lat.nx):
+        plt.subplot(int(f"{lat.nx}{1}{j + 1}"))
+        plt.ylabel("$\\frac{d \\langle N \\rangle}{d t}$")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.plot(t_p.times, np.gradient(expectations["num" + str(j)], t_p.delta / lat.freq))
+        plt.plot(t_p.times, -(expectations['current' + str(j)]
+                              - expectations['current' + str(j - 1)]) / lat.a)
+else:
+    plt.subplot(int(f"{lat.nx}{1}{1}"))
+    plt.xlabel("Time (cycles)")
+    plt.ylabel("$\\frac{d \\langle N \\rangle}{dt}$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, np.gradient(expectations["num" + str(0)], t_p.delta / lat.freq))
+    plt.plot(t_p.times, -(expectations['current' + str(0)]) / lat.a)
+    for j in range(1, lat.nx - 1):
+        plt.subplot(int(f"{lat.nx}{1}{j + 1}"))
+        plt.ylabel("$\\frac{d \\langle N \\rangle}{d t}$")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.plot(t_p.times, np.gradient(expectations["num" + str(j)], t_p.delta / lat.freq))
+        plt.plot(t_p.times, -(expectations['current' + str(j)]
+                              - expectations['current' + str(j - 1)]) / lat.a)
+    plt.subplot(int(f"{lat.nx}{1}{lat.nx}"))
+    plt.ylabel("$\\frac{d \\langle N \\rangle}{d t}$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, np.gradient(expectations["num" + str(lat.nx - 1)], t_p.delta / lat.freq))
+    plt.plot(t_p.times, expectations['current' + str(lat.nx - 2)] / lat.a)
+
+# plt.figure("total continuity")
+# plt.xlabel("Time (cycles)")
+# plt.ylabel("$\\frac{d \\langle N \\rangle}{dt}$")
+# plt.grid(True)
+# plt.tight_layout()
+# plt.plot(t_p.times, np.gradient(expectations["n"], t_p.delta))
+
+plt.figure("Ehrenfest Theorem")
+plt.xlabel("Time (cycles)")
+plt.ylabel("$\\frac{d J}{dt}$")
+plt.grid(True)
+plt.tight_layout()
+plt.plot(t_p.times, np.gradient(expectations['current'], t_p.delta / lat.freq))
+D = expectations['hop_left_op']
+phi = expectations['phi']
+ehrenfest2 = -2 * lat.a * lat.t * (np.gradient(np.abs(D), t_p.delta / lat.freq) * np.sin(phi - np.angle(D))
+                                   + np.abs(D) * np.cos(phi - np.angle(D))
+                                   * np.gradient(phi - np.angle(D), t_p.delta / lat.freq))
+plt.plot(t_p.times, ehrenfest2)

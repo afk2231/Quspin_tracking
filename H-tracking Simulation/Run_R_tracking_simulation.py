@@ -35,14 +35,14 @@ t_init = time()
 np.__config__.show()
 
 """Generate our class for the unscaled parameters. These are primarily used for saving our data"""
-param = unscaledparam(L=6, t0=0.52, U=1, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
+param = unscaledparam(L=6, t0=0.52, U=0.5, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
 
 """Generating our class of scaled parameters. This is used for most of the calculations"""
 lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=0, U=param.U, t=param.t0, F0=param.F0
           , a=param.a, pbc=param.pbc)
 
 """setup our evolution time parameters"""
-t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e4))
+t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(1e4))
 
 """importing our data from preliminary simulation"""
 loadfile = '../Preliminary simulation/Data/expectations:{}sites-{}up-{}down-{}t0-{}U-{}cycles-{}steps-{}pbc.npz'\
@@ -83,9 +83,9 @@ FHM.create_commutator()
 """Start our evolution"""
 
 for newtime in tqdm(t_p.times[:-1]):
-    solver_args = dict(atol=1e-4)
+    # solver_args = dict(atol=1e-12)
     gamma_t = evolve(v0=gamma_t, t0=newtime, times=np.array([newtime + t_p.delta]), f=R_tracking_evolution_equation,
-                     f_params=[FHM, obs, J_target], solver_name='dopri5', **solver_args)
+                     f_params=[FHM, obs, J_target], solver_name='dopri5')
     gamma_t = gamma_t.reshape(-1)
     phi_t = obs.phi_init + np.angle(FHM.operator_dict['hop_left_op'].expt_value(gamma_t[:-1])) - gamma_t[-1]
     obs.append_observables(gamma_t[:-1], phi_t)

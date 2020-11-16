@@ -29,14 +29,14 @@ t_init = time()
 np.__config__.show()
 
 """Generate our class for the unscaled parameters. These are primarily used for saving our data"""
-param = unscaledparam(L=6, t0=0.52, U=1.0, pbc=True, field=32.9, F0=10, a=4)
+param = unscaledparam(L=6, t0=0.52, U=0.5, pbc=False, field=32.9, F0=10, a=4)
 
 """Generating our class of scaled parameters. This is used for most of the calculations"""
 lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=0, U=param.U, t=param.t0, F0=param.F0
           , a=param.a, pbc=param.pbc)
 
 """setup our evolution time parameters"""
-t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e4))
+t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e3))
 
 """setup quspin operators and lists"""
 FHM = Fermi_Hubbard(lat, t_p.cycles)
@@ -53,6 +53,10 @@ ti = time()
 psi_t = FHM.operator_dict["H"].evolve(psi_0, 0.0, t_p.times)
 psi_t = np.squeeze(psi_t)
 print('Evolution finished. It took {:.2f} seconds to evolve the system'.format(time() - ti))
+
+"""creating additional operators"""
+FHM.create_number_operator()
+FHM.create_time_dependent_current_operator()
 
 """find the observables according to the state"""
 print('Generating our expectations from operators.')

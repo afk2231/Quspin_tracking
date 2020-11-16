@@ -34,6 +34,7 @@ class Fermi_Hubbard:
         self.operator_dict["hop_right_op"] = -hop_right_op / perimeter_params.t
         self.operator_dict["ham_init"] = ham_onsite + (hop_left_op + hop_right_op)
 
+        self.cycles = cycles
         dynamic_args = [perimeter_params, cycles]
         self.dHl = [
             ["+-|", self.hop_left, expiphi, dynamic_args],  # up hop left
@@ -61,16 +62,39 @@ class Fermi_Hubbard:
     def create_number_operator(self):
         num_list = [[1, _] for _ in range(self.perimeter_params.nx)]
         self.operator_dict['n'] = hamiltonian([["n|", num_list], ["|n", num_list]], [], basis=self.basis)
-        for _ in range(self.perimeter_params.nx):
-            self.operator_dict['num'+str(_)] = hamiltonian([["n|", [[1, _], ]], ["|n", [[1, _], ]]], [],
+        for j in range(self.perimeter_params.nx):
+            self.operator_dict['num'+str(j)] = hamiltonian([["+-|", [[1, j, j], ]], ["|+-", [[1, j, j], ]]], [],
                                                            basis=self.basis)
 
     def create_current_operator(self):
         no_checks = dict(check_pcon=False, check_symm=False, check_herm=False)
-        for _ in range(self.perimeter_params.nx - 1):
-            self.operator_dict["K"+str(_)] = hamiltonian([["+-|", [[1, _, _ + 1], ]], ["|+-", [[1, _, _ + 1], ]]],
-                                                         [], basis=self.basis, **no_checks)
+        pp = self.perimeter_params
+        for j in range(pp.nx - 1):
+            k = hamiltonian([["+-|", [[1.0, j, j + 1],]], ["|+-", [[1.0, j, j + 1],]]], [], basis=self.basis, **no_checks)
+            # k_h = hamiltonian([["+-|", [1.0, j + 1, j]], ["|+-", [1.0, j + 1, j]]], [], basis=self.basis)
+            self.operator_dict['K' + str(j)] = k
+        if pp.pbc:
+            k = hamiltonian([["+-|", [[1.0, pp.nx - 1, 0],]], ["|+-", [[1.0, pp.nx - 1, 0],]]], [], basis=self.basis, **no_checks)
+            self.operator_dict['K' + str(pp.nx - 1)] = k
+
+
+    def create_time_dependent_current_operator(self):
+        no_checks = dict(check_pcon=False, check_symm=False, check_herm=False)
+        perpa = self.perimeter_params
+        dynamic_args = [perpa, self.cycles]
+        for j in range(self.perimeter_params.nx - 1):
+            K = hamiltonian([], [["+-|", [[1, j, j + 1], ], expiphi, dynamic_args], ["|+-", [[1, j, j + 1], ], expiphi,
+                                                                                     dynamic_args]], basis=self.basis,
+                            **no_checks)
+            K_h = hamiltonian([],[["+-|", [[1, j + 1, j], ], expiphiconj, dynamic_args], ["|+-", [[1, j + 1, j], ],
+                                                                                          expiphiconj, dynamic_args]],
+                              basis=self.basis, **no_checks)
+            self.operator_dict["current"+str(j)] = -1j * perpa.a * perpa.t * (K - K_h)
         if self.perimeter_params.pbc:
-            self.operator_dict["K"+str(self.perimeter_params.nx - 1)] = hamiltonian(
-                [["+-|", [[1, self.perimeter_params.nx - 1, 0], ]], ["|+-", [[1, self.perimeter_params.nx - 1, 0], ]]],
-                [], basis=self.basis, **no_checks)
+            K = hamiltonian([], [["+-|", [[1, perpa.nx - 1, 0], ], expiphi, dynamic_args],
+                                 ["|+-", [[1, perpa.nx - 1, 0], ], expiphi, dynamic_args]],
+                            basis=self.basis, **no_checks)
+            K_h = hamiltonian([], [["+-|", [[1, 0, perpa.nx - 1], ], expiphiconj, dynamic_args],
+                                 ["|+-", [[1, 0, perpa.nx - 1], ], expiphiconj, dynamic_args]],
+                            basis=self.basis, **no_checks)
+            self.operator_dict["current" + str(perpa.nx - 1)] = -1j * perpa.a * perpa.t * (K - K_h)

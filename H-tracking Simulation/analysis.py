@@ -23,7 +23,7 @@ plt.rcParams.update(pltparams)
 
 """Generate our class for the unscaled parameters"""
 """these are primarily used for saving our data"""
-param = unscaledparam(L=6, t0=0.52, U=1, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
+param = unscaledparam(L=6, t0=0.52, U=0.5, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
 
 """generating our class of scaled parameters"""
 """this is used for most of the calculations"""
@@ -31,7 +31,7 @@ lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=
           , a=param.a, pbc=param.pbc)
 
 """setup our evolution time parameters"""
-t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e4), plotting=1)
+t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(1e4), plotting=1)
 
 """prepare to load our data to be plotted"""
 outfile = './Data/expectations:{}sites-{}up-{}down-{}t0-{}U-{}cycles-{}steps-{}pbc:a_scale={:.2f}-J_scale={:.2f}' \
@@ -111,36 +111,58 @@ plt.plot(t_p.times, np.gradient(expectations['tracking_pnumber_R_tracking'], t_p
 plt.show()
 
 plt.figure("Nj")
-for _ in range(lat.nx - 1):
-    plt.subplot(int(f"{lat.nx}{1}{_ + 1}"))
+for j in range(lat.nx - 1):
+    plt.subplot(int(f"{lat.nx}{1}{j + 1}"))
     plt.ylabel("$\\langle N \\rangle$")
     plt.grid(True)
     plt.tight_layout()
-    plt.plot(t_p.times, expectations["tracking_pnumbersite" + str(_) + "_R_tracking"])
+    plt.plot(t_p.times, expectations["tracking_pnumbersite" + str(j) + "_R_tracking"])
 if lat.pbc:
     plt.subplot(int(f"{lat.nx}{1}{lat.nx}"))
     plt.xlabel("Time (cycles)")
     plt.ylabel("$\\langle N \\rangle$")
     plt.grid(True)
     plt.tight_layout()
-    plt.plot(t_p.times, expectations["tracking_pnumbersite5_R_tracking"])
+    plt.plot(t_p.times, expectations["tracking_pnumbersite" + str(lat.nx - 1) + "_R_tracking"])
+
+# plt.figure("current at site 0")
+# plt.xlabel("Time (cycles)")
+# plt.ylabel("$\\frac{d \\langle N \\rangle}{dt}$")
+# plt.grid(True)
+# plt.tight_layout()
+# plt.plot(t_p.times, expectations['tracking_current_R_tracking']/6)
+# plt.plot(t_p.times, expectations['tracking_pcurrentsite0_R_tracking'])
 
 """Continuity checks"""
 plt.figure("Continuity Check")
-for _ in range(lat.nx - 1):
-    plt.subplot(int(f"{lat.nx}{1}{_ + 1}"))
-    plt.ylabel("$\\frac{d \\langle N \\rangle}{d t}$")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.plot(t_p.times, np.gradient(expectations["tracking_pnumbersite" + str(_) + "_R_tracking"], t_p.delta))
-    plt.plot(t_p.times, (expectations['tracking_pcurrentsite' + str(_ + 1) + "_R_tracking"]
-                         - expectations['tracking_pcurrentsite' + str(_) + "_R_tracking"])/lat.a)
 if lat.pbc:
-    plt.subplot(int(f"{lat.nx}{1}{lat.nx}"))
+    plt.subplot(int(f"{lat.nx}{1}{1}"))
     plt.xlabel("Time (cycles)")
     plt.ylabel("$\\frac{d \\langle N \\rangle}{dt}$")
     plt.grid(True)
     plt.tight_layout()
-    plt.plot(t_p.times, np.gradient(expectations["tracking_pnumbersite5_R_tracking"], t_p.delta))
-    plt.plot(t_p.times, (expectations['tracking_pcurrentsite0_R_tracking']
-                         - expectations['tracking_pcurrentsite5_R_tracking']) / lat.a)
+    plt.plot(t_p.times, np.gradient(expectations["tracking_pnumbersite" + str(0) + "_R_tracking"], t_p.delta / lat.freq))
+    plt.plot(t_p.times, (expectations['tracking_pcurrentsite' + str(0) + '_R_tracking']
+                         - expectations['tracking_pcurrentsite' + str(lat.nx - 1) + '_R_tracking']) / lat.a)
+
+for _ in range(1,lat.nx):
+    plt.subplot(int(f"{lat.nx}{1}{_ + 1}"))
+    plt.ylabel("$\\frac{d \\langle N \\rangle}{d t}$")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.plot(t_p.times, np.gradient(expectations["tracking_pnumbersite" + str(_) + "_R_tracking"], t_p.delta/ lat.freq))
+    plt.plot(t_p.times, (expectations['tracking_pcurrentsite' + str(_) + "_R_tracking"]
+                         - expectations['tracking_pcurrentsite' + str(_ - 1) + "_R_tracking"])/lat.a)
+
+plt.figure("Ehrenfest Theorem")
+plt.xlabel("Time (cycles)")
+plt.ylabel("$\\frac{d J}{dt}$")
+plt.grid(True)
+plt.tight_layout()
+plt.plot(t_p.times, np.gradient(expectations['tracking_current_R_tracking'], t_p.delta / lat.freq))
+D = expectations['tracking_neighbour_R_tracking']
+phi = expectations['tracking_phi_R_tracking']
+ehrenfest2 = -2 * lat.a * lat.t * (np.gradient(np.abs(D), t_p.delta / lat.freq) * np.sin(phi - np.angle(D))
+                                   + np.abs(D) * np.cos(phi - np.angle(D))
+                                   * np.gradient(phi - np.angle(D), t_p.delta / lat.freq))
+plt.plot(t_p.times, ehrenfest2)

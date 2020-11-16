@@ -26,11 +26,17 @@ class observables:
             for _ in range(self.fermihubbard.perimeter_params.nx - 1):
                 self.numbersite.append([])
                 self.currentsite.append([])
-            for _ in range(self.fermihubbard.perimeter_params.nx):
+            for _ in range(self.fermihubbard.perimeter_params.nx - 1):
                 self.numbersite[_] = [self.fermihubbard.operator_dict["num"+str(_)].expt_value(psi_init),]
                 K_t = expiphi(phi_init) * self.fermihubbard.operator_dict["K" + str(_)].expt_value(psi_init)
                 self.currentsite[_] = [-1j * self.fermihubbard.perimeter_params.t * self.fermihubbard.perimeter_params.a
                                        * (K_t - K_t.conj()), ]
+            if self.fermihubbard.perimeter_params.pbc:
+                self.numbersite[self.fermihubbard.perimeter_params.nx - 1].append(self.fermihubbard.operator_dict["num5"].expt_value(psi_init))
+                K_t = expiphi(phi_init) * self.fermihubbard.operator_dict["K5"].expt_value(psi_init)
+                self.currentsite[self.fermihubbard.perimeter_params.nx - 1].append(
+                    -1j * self.fermihubbard.perimeter_params.t * self.fermihubbard.perimeter_params.a
+                    * (K_t - K_t.conj()))
         self.add_var = dict()
 
     def append_observables(self, psi, phi):
@@ -43,11 +49,17 @@ class observables:
         self.phi.append(phi)
         if self.continuity:
             self.number.append(self.fermihubbard.operator_dict['n'].expt_value(psi))
-            for _ in range(self.fermihubbard.perimeter_params.nx):
+            for _ in range(self.fermihubbard.perimeter_params.nx - 1):
                 self.numbersite[_].append(self.fermihubbard.operator_dict["num"+str(_)].expt_value(psi))
                 K_t = expiphi(phi) * self.fermihubbard.operator_dict["K" + str(_)].expt_value(psi)
                 self.currentsite[_].append(-1j * self.fermihubbard.perimeter_params.t * self.fermihubbard.perimeter_params.a
                                        * (K_t - K_t.conj()))
+            if self.fermihubbard.perimeter_params.pbc:
+                self.numbersite[self.fermihubbard.perimeter_params.nx - 1].append(self.fermihubbard.operator_dict["num5"].expt_value(psi))
+                K_t = expiphi(phi) * self.fermihubbard.operator_dict["K5"].expt_value(psi)
+                self.currentsite[self.fermihubbard.perimeter_params.nx - 1].append(
+                    -1j * self.fermihubbard.perimeter_params.t * self.fermihubbard.perimeter_params.a
+                    * (K_t - K_t.conj()))
 
 
     def save_observables(self, expectation_dict, method=''):
@@ -57,9 +69,13 @@ class observables:
         expectation_dict["tracking_energy" + method] = self.energy
         expectation_dict["tracking_pnumber" + method] = self.number
         if self.continuity:
-            for _ in range(self.fermihubbard.perimeter_params.nx):
+            for _ in range(self.fermihubbard.perimeter_params.nx - 1):
                 expectation_dict["tracking_pnumbersite" + str(_) + method] = self.numbersite[_]
                 expectation_dict["tracking_pcurrentsite" + str(_) + method] = self.currentsite[_]
+            if self.fermihubbard.perimeter_params.pbc:
+                expectation_dict["tracking_pnumbersite" + str(self.fermihubbard.perimeter_params.nx - 1) + method] = self.numbersite[self.fermihubbard.perimeter_params.nx - 1]
+                expectation_dict["tracking_pcurrentsite" + str(self.fermihubbard.perimeter_params.nx - 1) + method] = self.currentsite[self.fermihubbard.perimeter_params.nx - 1]
+
 
     def switch_tracking_methods(self, method, fermihubbard, psi, J_target):
         if method == "R2H":
