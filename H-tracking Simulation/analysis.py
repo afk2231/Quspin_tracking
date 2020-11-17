@@ -58,7 +58,7 @@ plt.ylabel("$J(t)$")
 plt.grid(True)
 plt.tight_layout()
 plt.plot(t_p.times, expectations['current'])
-plt.plot(t_p.times, expectations['tracking_current_R_tracking'], ".")
+plt.plot(t_p.times, expectations['tracking_current_R_tracking'])
 plt.show()
 
 """Plotting energy"""

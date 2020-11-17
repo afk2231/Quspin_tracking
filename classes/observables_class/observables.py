@@ -67,8 +67,8 @@ class observables:
         expectation_dict["tracking_phi" + method] = self.phi
         expectation_dict["tracking_neighbour" + method] = self.neighbour
         expectation_dict["tracking_energy" + method] = self.energy
-        expectation_dict["tracking_pnumber" + method] = self.number
         if self.continuity:
+            expectation_dict["tracking_pnumber" + method] = self.number
             for _ in range(self.fermihubbard.perimeter_params.nx - 1):
                 expectation_dict["tracking_pnumbersite" + str(_) + method] = self.numbersite[_]
                 expectation_dict["tracking_pcurrentsite" + str(_) + method] = self.currentsite[_]
