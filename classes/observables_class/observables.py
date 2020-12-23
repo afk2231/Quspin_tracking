@@ -13,11 +13,19 @@ class observables:
         self.neighbour = [fermihubbard.operator_dict['hop_left_op'].expt_value(psi_init),]
         self.current = [J_init,]
         self.phi = [phi_init,]
-        self.energy = [fermihubbard.operator_dict['ham_init'].expt_value(psi_init),]
+        D = self.neighbour[-1]
+        expi = expiphi(phi_init)
+        doub = fermihubbard.operator_dict['H_onsite'].expt_value(psi_init)
+        a = fermihubbard.perimeter_params.a
+        t = fermihubbard.perimeter_params.t
+        self.energy = [-t * (D * expi + (D * expi).conj()) + doub,]
         # self.y = 0
         # self.psi = psi_init
         self.phi_init = phi_init
-        self.boundary_term = 0.0
+        if np.isclose(J_init, 0):
+            self.boundary_term = 0
+        else:
+            self.boundary_term = a * self.energy[-1]/J_init
         self.number = [self.fermihubbard.perimeter_params.nup + self.fermihubbard.perimeter_params.ndown,]
         self.numbersite = [[], ]
         self.currentsite = [[], ]
@@ -46,6 +54,12 @@ class observables:
         self.energy.append(-self.fermihubbard.perimeter_params.t
                            * (expiphi(phi) * self.neighbour[-1] + expiphiconj(phi) * self.neighbour[-1].conj())
                            + self.fermihubbard.operator_dict['H_onsite'].expt_value(psi))
+        while abs(phi.real - self.phi[-1].real) > PI:
+            if phi.real - self.phi[-1].real > PI:
+                phi -= 2 * PI
+            elif phi.real - self.phi[-1].real < - PI:
+                phi += 2 * PI
+
         self.phi.append(phi)
         if self.continuity:
             self.number.append(self.fermihubbard.operator_dict['n'].expt_value(psi))
@@ -75,6 +89,20 @@ class observables:
             if self.fermihubbard.perimeter_params.pbc:
                 expectation_dict["tracking_pnumbersite" + str(self.fermihubbard.perimeter_params.nx - 1) + method] = self.numbersite[self.fermihubbard.perimeter_params.nx - 1]
                 expectation_dict["tracking_pcurrentsite" + str(self.fermihubbard.perimeter_params.nx - 1) + method] = self.currentsite[self.fermihubbard.perimeter_params.nx - 1]
+
+    def save_observables_branch(self, expectation_dict, branch_string, method=''):
+        expectation_dict["tracking_current" + branch_string + method] = self.current
+        expectation_dict["tracking_phi" + branch_string + method] = self.phi
+        expectation_dict["tracking_neighbour" + branch_string + method] = self.neighbour
+        expectation_dict["tracking_energy" + branch_string + method] = self.energy
+        if self.continuity:
+            expectation_dict["tracking_pnumber" + branch_string + method] = self.number
+            for _ in range(self.fermihubbard.perimeter_params.nx - 1):
+                expectation_dict["tracking_pnumbersite" + str(_) + branch_string + method] = self.numbersite[_]
+                expectation_dict["tracking_pcurrentsite" + str(_) + branch_string + method] = self.currentsite[_]
+            if self.fermihubbard.perimeter_params.pbc:
+                expectation_dict["tracking_pnumbersite" + str(self.fermihubbard.perimeter_params.nx - 1) + branch_string + method] = self.numbersite[self.fermihubbard.perimeter_params.nx - 1]
+                expectation_dict["tracking_pcurrentsite" + str(self.fermihubbard.perimeter_params.nx - 1) + branch_string + method] = self.currentsite[self.fermihubbard.perimeter_params.nx - 1]
 
 
     def switch_tracking_methods(self, method, fermihubbard, psi, J_target):

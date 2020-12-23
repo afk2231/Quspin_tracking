@@ -17,7 +17,8 @@ from classes.unscaled_parameters.unscaledparam import unscaledparam
 from classes.time_param.t_param import time_evolution_params
 from classes.observables_class.observables import observables
 from functions.original_tracking_equations.original_tracking_equations import phi_J_track
-from functions.H_R_tracking_equations.H_R_evol_eqs import R_tracking_evolution_equation
+from functions.H_R_tracking_equations.H_R_evol_eqs import R_tracking_evolution_equation, \
+    original_R_tracking_evolution_equation
 from functions.original_evolution_equations.evol_eqs import phi as phi_bm
 from scipy.interpolate import UnivariateSpline
 import psutil
@@ -46,7 +47,7 @@ a_d = dict(np.load(acceptable_data))
 """build everything needed for both simulations"""
 
 # generating parameter classes
-param = unscaledparam(L=6, t0=0.52, U=0.5, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
+param = unscaledparam(L=6, t0=0.52, U=0.5, pbc=True, field=32.9, F0=9, a=4, a_scale=1, J_scale=1, tracking=1)
 
 lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=0, U=param.U, t=param.t0, F0=param.F0
           , a=param.a, pbc=param.pbc)
@@ -54,7 +55,7 @@ lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=
 acceptable_current = UnivariateSpline(np.linspace(0, 2/lat.freq, num=len(a_d['current'])), a_d['current'], s=0)
 
 
-param_track = unscaledparam(L=6, t0=0.52, U=0.5, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
+param_track = unscaledparam(L=6, t0=0.52, U=0.5, pbc=True, field=32.9, F0=9, a=4, a_scale=1, J_scale=1, tracking=1)
 
 lat_track = hhg(field=param_track.field, nup=param_track.N_up, ndown=param_track.N_down, nx=param_track.L, ny=0,
                 U=param_track.U, t=param_track.t0, F0=param_track.F0, a=param_track.a, pbc=param_track.pbc)
@@ -75,7 +76,10 @@ E_track, psi_0_track = FHM.operator_dict['H'].eigsh(k=1, which='SA')
 """start running R tracking and prelim simulation starting with 1000 steps incrimenting by 100 until 10000"""
 t_a_absolute_err = []
 t_a_absolute_err_R_track = []
-t_a_relative_err = []
+t_a_relative_err_R_track = []
+t_a_absolute_err_R_prime_track = []
+t_a_relative_err_R_prime_track = []
+t_a_relative_err_delay = []
 min_steps = 1000
 max_steps = 10000
 delta_steps = 100
@@ -105,20 +109,40 @@ for j in range(int((max_steps - min_steps)/delta_steps) + 1):
 
     # generate the current through runga-kutta of the state
     for newtime in tqdm(t_p.times[:-1]):
-        solver_args = dict(atol=1e-4)
+        solver_args = dict(atol=1e-3)
         gamma_t = evolve(v0=gamma_t, t0=newtime, times=np.array([newtime + t_p.delta]), f=R_tracking_evolution_equation,
+                         f_params=[FHM_track, obs, J_target], solver_name='dop853', **solver_args)
+        gamma_t = gamma_t.reshape(-1)
+        D = FHM.operator_dict['hop_left_op'].expt_value(gamma_t[:-1])
+        phi_t = (obs.phi_init + np.angle(D) - gamma_t[-1]).real
+        R_current.append(
+            -1j * lat_track.a * lat_track.t * (np.exp(-1j * phi_t) * D - np.exp(1j * phi_t) * D.conj())
+        )
+    gamma_t = np.append(np.squeeze(psi_0), 0.0)
+
+    obs = observables(gamma_t[:-1], J_target(0.0), phi_J_track(lat_track, 0.0, J_target, FHM_track, gamma_t[:-1]),
+                      FHM_track)
+
+    R_prime_current = [J_target(0.0), ]
+
+    for newtime in tqdm(t_p.times[:-1]):
+        solver_args = dict(atol=1e-3)
+        gamma_t = evolve(v0=gamma_t, t0=newtime, times=np.array([newtime + t_p.delta]), f=original_R_tracking_evolution_equation,
                          f_params=[FHM_track, obs, J_target], solver_name='dopri5', **solver_args)
         gamma_t = gamma_t.reshape(-1)
         D = FHM.operator_dict['hop_left_op'].expt_value(gamma_t[:-1])
-        phi_t = obs.phi_init + np.angle(D) - gamma_t[-1]
-        R_current.append(
+        phi_t = gamma_t[-1].real
+        R_prime_current.append(
             -1j * lat_track.a * lat_track.t * (np.exp(-1j * phi_t) * D - np.exp(1j * phi_t) * D.conj())
         )
 
     # generate our time averaged errors through our observables.
     t_a_absolute_err.append(np.sum(np.abs(acceptable_current(t_p.times) - current['J']))/n_steps)
     t_a_absolute_err_R_track.append(np.sum(np.abs(acceptable_current(t_p_track.times) - R_current))/n_steps)
-    t_a_relative_err.append(np.sum(np.abs(current['J'] - R_current))/n_steps)
+    t_a_relative_err_R_track.append(np.sum(np.abs(current['J'] - R_current))/n_steps)
+    t_a_absolute_err_R_prime_track.append(np.sum(np.abs(acceptable_current(t_p_track.times) - R_prime_current))/n_steps)
+    t_a_relative_err_R_prime_track.append(np.sum(np.abs(current['J'] - R_prime_current))/n_steps)
+    t_a_relative_err_delay.append(np.sum(np.abs(np.asarray(R_prime_current) - R_current))/n_steps)
 
 """save the errors"""
 
@@ -126,7 +150,9 @@ outfile = './Data/errors:{}sites-{}up-{}down-{}t0-{}U-{}cycles-{}pbc.npz'.format
                                                                                  param.t0, param.U, 2,
                                                                                  param.pbc)
 
-error = dict(taa_err=t_a_absolute_err, taa_err_R=t_a_absolute_err_R_track, tar_err=t_a_relative_err)
+error = dict(taa_err=t_a_absolute_err, taa_err_R_delay=t_a_absolute_err_R_track,
+             tar_err_R_delay=t_a_relative_err_R_track, taa_err_R=t_a_absolute_err_R_prime_track,
+             tar_err_R=t_a_relative_err_R_prime_track, tar_err_delay=t_a_relative_err_delay)
 
 np.savez(outfile, **error)
 

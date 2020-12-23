@@ -24,7 +24,7 @@ plt.rcParams.update(pltparams)
 
 """Generate our class for the unscaled parameters"""
 """these are primarily used for saving our data"""
-param = unscaledparam(L=6, t0=0.52, U=0.5, pbc=False, field=32.9, F0=10, a=4)
+param = unscaledparam(L=6, t0=0.52, U=0.0, pbc=True, field=32.9, F0=10, a=4)
 
 """generating our class of scaled parameters"""
 """this is used for most of the calculations"""
@@ -32,7 +32,7 @@ lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=
           , a=param.a, pbc=param.pbc)
 
 """setup our evolution time parameters"""
-t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(1e4), plotting=1)
+t_p = time_evolution_params(perimeter_params=lat, cycles=1, nsteps=int(2e3), plotting=1)
 
 """prepare to load our data to be plotted"""
 outfile = './Data/expectations:{}sites-{}up-{}down-{}t0-{}U-{}cycles-{}steps-{}pbc.npz'.format(param.L, param.N_up,
