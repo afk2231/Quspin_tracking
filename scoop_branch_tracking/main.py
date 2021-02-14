@@ -12,6 +12,8 @@ from classes.time_param.t_param import time_evolution_params
 from classes.observables_class.observables import observables
 from functions.original_tracking_equations.original_tracking_equations import phi_J_track_with_branches, phi_J_track
 from functions.original_tracking_equations.original_tracking_equations import original_tracking_evolution_with_branches
+from functions.original_tracking_equations.original_tracking_equations import original_tracking_RK4
+
 from scipy.interpolate import UnivariateSpline
 from scipy.interpolate import interp1d
 import psutil
@@ -73,13 +75,29 @@ def schrod_evol(start_time, psi_0, t_p, fhm, j_target, param, l, obs, branch_num
     tasks = []
     # print(start_time)
     while newtime < t_p.times[-1]:
-        solver_args = dict(atol=1e-8)
-        psi_t = evolve(v0=psi_t, t0=newtime, times=np.array([newtime + t_p.delta]),
-                       f=original_tracking_evolution_with_branches, f_params=[fhm, j_target, l, branch_num],
-                       **solver_args)
+        ## Original evolution method
+        # solver_args = dict(atol=1e-8)
+        # psi_t = evolve(v0=psi_t, t0=newtime, times=np.array([newtime + t_p.delta]),
+        #                f=original_tracking_evolution_with_branches, f_params=[fhm, j_target, l, branch_num],
+        #                solver_name='dopri5', **solver_args)
+        #
+        # # reshape the wavefunction to take expectations of it
+        # psi_t = psi_t.reshape(-1)
 
-        # reshape the wavefunction to take expectations of it
-        psi_t = psi_t.reshape(-1)
+        # # Alternative dumber euler evolution
+        # psi_t = psi_t + (t_p.delta) * original_tracking_evolution_with_branches(newtime, psi_t, fhm, j_target, l,
+        #                                                                         branch_num)
+
+        ## slightly less dumb rk2 evolution
+        # k1 = (t_p.delta) * original_tracking_evolution_with_branches(newtime, psi_t, fhm, j_target, l,
+        #                                                                       branch_num)
+        # k2 = (t_p.delta) * original_tracking_evolution_with_branches(newtime + (t_p.delta)/2,
+        #                                                                       psi_t + k1/2, fhm, j_target, l,
+        #                                                                       branch_num)
+        # psi_t = psi_t + k2
+
+        ## crude RK4 evolution
+        psi_t = original_tracking_RK4(newtime, psi_t, fhm, j_target, l, branch_num, t_p)
 
         # find control field at the given time and wavefunction
         phi = phi_J_track_with_branches(l, newtime + t_p.delta, j_target, fhm, psi_t, branch_num)
@@ -89,16 +107,17 @@ def schrod_evol(start_time, psi_0, t_p, fhm, j_target, param, l, obs, branch_num
 
         # checks to see if the control field is sufficiently far away from the branch point to update the check
         theta = np.angle(obs.neighbour[-1])
-        phi_p = ((-1)**(-branch_num))*(phi - theta - branch_num * PI)
+        phi_p = ((-1)**(branch_num))*(phi - theta - branch_num * PI)
+        pi_tol = 8e-3
         if split_check:
-            if (PI / 2 - 5e-2) > phi_p > -(PI / 2 - 5e-2):
+            if (PI / 2 - (1.1 * pi_tol)) > phi_p > -(PI / 2 - (1.1 * pi_tol)):
                 split_check = False
 
         # check to see if the control field is near a branch point by using the formula
         #   phi - theta = Arcsin(X) = (-1)^(branch_number)*arcsin(X) + branch_number * pi
         #   to see if phi - theta is near half pi on its particular branch.
         else:
-            if (PI/2 + 1e-2) > phi_p > (PI/2 - 1e-2):
+            if (PI/2 + pi_tol) > phi_p > (PI/2 - pi_tol):
                 print("Branch point detected at t={}".format(newtime * l.freq))
                 # make a copy of observables class and update the branch number and string.
                 obs_jump = copy.deepcopy(obs)
@@ -113,7 +132,7 @@ def schrod_evol(start_time, psi_0, t_p, fhm, j_target, param, l, obs, branch_num
                 split_check = True
                 tasks.append(futures.submit(schrod_evol, *args))
 
-            elif -(PI/2 + 1e-2) < phi_p < -(PI/2 - 1e-2):
+            elif -(PI/2 + pi_tol) < phi_p < -(PI/2 - pi_tol):
                 print("Branch point detected at t={}".format(newtime * l.freq))
                 # make a deep copy of observables class and update the branch number and string.
                 obs_jump = copy.deepcopy(obs)
@@ -162,7 +181,7 @@ if __name__ == "__main__":
               , a=param.a, pbc=param.pbc)
 
     # setup our evolution time parameters
-    t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e3))
+    t_p = time_evolution_params(perimeter_params=lat, cycles=2, nsteps=int(2e4))
 
     # importing our data from preliminary simulation
     loadfile = 'Preliminary simulation/Data/expectations:{L}sites-{N_up}up-{N_down}down-{t0}t0-{U}U-{cycles}cycles-{n_steps}steps-{pbc}pbc.npz' \
