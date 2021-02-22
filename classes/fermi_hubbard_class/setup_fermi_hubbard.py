@@ -98,3 +98,11 @@ class Fermi_Hubbard:
                                  ["|+-", [[1, 0, perpa.nx - 1], ], expiphiconj, dynamic_args]],
                             basis=self.basis, **no_checks)
             self.operator_dict["current" + str(perpa.nx - 1)] = -1j * perpa.a * perpa.t * (K - K_h)
+
+    def phi_dependent_current(self, phi, psi, perimeter_params):
+        op_dict = dict()
+        op_dict["current"] = 1j * perimeter_params.a * perimeter_params.t * (np.exp(-1j * phi)*(self.operator_dict["lhopup"]
+                                                         + self.operator_dict["lhopdown"])
+                                                        - np.exp(1j * phi)*((self.operator_dict["lhopup"]
+                                                           + self.operator_dict["lhopdown"])).getH())
+        return op_dict["current"].expt_value(psi)
