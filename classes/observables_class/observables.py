@@ -1,4 +1,5 @@
 import sys
+import copy
 sys.path.append('.../')
 import numpy as np
 from functions.original_tracking_equations.original_tracking_equations import expiphi, expiphiconj
@@ -10,6 +11,7 @@ class observables:
     #   operators in the original tracking strategy, I'll just leave it be for now.
     def __init__(self, psi_init, J_init, phi_init, fermihubbard, continuity=0):
         self.fermihubbard = fermihubbard
+        self.psi = [psi_init,]
         self.neighbour = [fermihubbard.operator_dict['hop_left_op'].expt_value(psi_init),]
         self.current = [J_init,]
         self.phi = [phi_init,]
@@ -30,6 +32,7 @@ class observables:
         self.numbersite = [[], ]
         self.currentsite = [[], ]
         self.continuity = continuity
+
         if self.continuity:
             for _ in range(self.fermihubbard.perimeter_params.nx - 1):
                 self.numbersite.append([])
@@ -104,6 +107,33 @@ class observables:
                 expectation_dict["tracking_pnumbersite" + str(self.fermihubbard.perimeter_params.nx - 1) + branch_string + method] = self.numbersite[self.fermihubbard.perimeter_params.nx - 1]
                 expectation_dict["tracking_pcurrentsite" + str(self.fermihubbard.perimeter_params.nx - 1) + branch_string + method] = self.currentsite[self.fermihubbard.perimeter_params.nx - 1]
 
+    def initialize_work(self):
+        work = 0.0
+        self.work = [work,]
+
+    def append_work(self, times):
+        l = self.fermihubbard.perimeter_params
+        if not self.continuity:
+            print("Please set continuity in the initialization of observables class to True")
+            sys.exit(1)
+        phi_dot = np.gradient(self.phi, 1)
+        phi_ddot = np.gradient(self.phi, 2)
+        work_I = 2 * l.t * phi_dot * np.abs(self.neighbour) * np.cos(np.angle(self.neighbour) - self.phi)
+
+        for n, j in zip(self.numbersite, range(l.nx-1)):
+            # print(work_I.shape)
+            # print(np.array(n).shape)
+            work_I -= phi_ddot * j * np.array(n).real
+        # print(work_I)
+        work = np.trapz(work_I, times[:len(work_I)])
+        # print(work)
+        # print(len(self.work))
+        self.work.append(work)
+
+    def save_work(self, expectation_dict, method=''):
+        print("work expectation saving")
+        expectation_dict["tracking_work" + method] = self.work
+        print("work expectation saved")
 
     def switch_tracking_methods(self, method, fermihubbard, psi, J_target):
         if method == "R2H":
@@ -119,3 +149,24 @@ class observables:
             self.boundary_term = 0.0
 
         return 0.0
+
+    def deepcopy(self):
+        obs_deepcopy = observables(
+            psi_init=self.psi[0],
+            J_init=self.current[0],
+            phi_init=self.phi_init,
+            fermihubbard=copy.deepcopy(self.fermihubbard),
+            continuity=self.continuity
+        )
+        obs_deepcopy.neighbour = self.neighbour.copy()
+        obs_deepcopy.current = self.current.copy()
+        obs_deepcopy.energy = self.energy.copy()
+        obs_deepcopy.phi = self.phi.copy()
+        if self.continuity:
+            obs_deepcopy.number = self.number.copy()
+            for j in range(self.fermihubbard.perimeter_params.nx - 1):
+                obs_deepcopy.numbersite[j] = self.numbersite[j]
+                obs_deepcopy.currentsite[j] = self.currentsite[j]
+
+        return obs_deepcopy
+

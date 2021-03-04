@@ -39,14 +39,14 @@ np.__config__.show()
 ti = time()
 print("Building initial classes")
 """Generate our class for the unscaled parameters. These are primarily used for saving our data"""
-param = unscaledparam(L=6, t0=0.52, U=0.001, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
+param = unscaledparam(L=6, t0=0.52, U=11, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
 
 """Generating our class of scaled parameters. This is used for most of the calculations"""
 lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=0, U=param.U, t=param.t0, F0=param.F0
           , a=param.a, pbc=param.pbc)
 
 """Generate our class for the unscaled parameters for the twinned system."""
-param2 = unscaledparam(L=6, t0=0.52, U=1, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
+param2 = unscaledparam(L=6, t0=0.52, U=15, pbc=True, field=32.9, F0=10, a=4, a_scale=1, J_scale=1, tracking=1)
 
 """Generating our class of scaled parameters for the twinned system."""
 lat2 = hhg(field=param2.field, nup=param2.N_up, ndown=param2.N_down, nx=param2.L, ny=0, U=param2.U, t=param2.t0, F0=param2.F0
@@ -81,7 +81,7 @@ t_p_kick = time_evolution_params(perimeter_params=lat, cycles=10, nsteps=int(2e3
 psi1_init = psi1_0.copy()
 psi2_init = psi2_0.copy()
 
-for current_time in tqdm(t_p_kick.times[:int(len(t_p_kick.times)/3.2)]):
+for current_time in tqdm(t_p_kick.times[:]):
     solver_args = dict(atol=1e-12)
     # print(psi_t.shape)
     psi1_init = evolve(v0=psi1_init, t0=current_time, times=np.array([current_time + t_p.delta]),

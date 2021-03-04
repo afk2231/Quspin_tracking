@@ -25,7 +25,7 @@ plt.rcParams.update(pltparams)
 
 """Generate our class for the unscaled parameters"""
 """these are primarily used for saving our data"""
-param = unscaledparam(L=6, t0=0.52, U=0.5, pbc=True, field=32.9, F0=10, a=4, a_scale=1.0, J_scale=1, tracking=1)
+param = unscaledparam(L=6, t0=0.52, U=0, pbc=True, field=32.9, F0=10, a=4, a_scale=1.0, J_scale=1, tracking=1)
 
 """generating our class of scaled parameters"""
 """this is used for most of the calculations"""
@@ -52,13 +52,20 @@ data.sort(
     # key=lambda expect: np.abs(expect['tracking_phi'].real[-1])
     key=lambda expect: np.linalg.norm(prelim_data['current'] - expect['tracking_current'][:len(prelim_data['current'])])
 )
-data = data[:]
+data = data[:5]
 data.sort(
     # key=lambda expect: expect['tracking_phi'].real[-1]
     key=lambda expect: np.abs(expect['tracking_phi'].real[-1])
     # key=lambda expect: np.linalg.norm(prelim_data['current'] - expect['tracking_current'][:len(prelim_data['current'])])
 )
 # data = data[41:20]
+for d in data:
+    if len(prelim_data["phi"]) == len(d["tracking_phi"]):
+        print("good")
+    else:
+        print("bad")
+        print(len(prelim_data["phi"]) - len(d["tracking_phi"]))
+        # exit(1)
 # data = [data[41], data[20]]
 colouring = np.linspace(0, 1, len(data))
 # plt.figure("control fields and currents")
