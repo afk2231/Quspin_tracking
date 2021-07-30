@@ -6,6 +6,7 @@ from classes.unscaled_parameters.unscaledparam import unscaledparam
 from classes.perimeter_params.tools import parameter_instantiate as hhg
 import sys
 from scipy import signal
+from scipy.integrate import cumtrapz
 from scipy import fftpack
 from matplotlib.colors import SymLogNorm
 sys.path.append('../')
@@ -25,7 +26,7 @@ plt.rcParams.update(pltparams)
 
 """Generate our class for the unscaled parameters"""
 """these are primarily used for saving our data"""
-param = unscaledparam(L=6, t0=0.52, U=0, pbc=True, field=32.9, F0=10, a=4, a_scale=1.0, J_scale=1, tracking=1)
+param = unscaledparam(L=6, t0=0.52, U=0.0, pbc=True, field=32.9, F0=10, a=4, a_scale=1.0, J_scale=1, tracking=1)
 
 """generating our class of scaled parameters"""
 """this is used for most of the calculations"""
@@ -52,21 +53,22 @@ data.sort(
     # key=lambda expect: np.abs(expect['tracking_phi'].real[-1])
     key=lambda expect: np.linalg.norm(prelim_data['current'] - expect['tracking_current'][:len(prelim_data['current'])])
 )
-data = data[:5]
+data = data[:-1]
 data.sort(
     # key=lambda expect: expect['tracking_phi'].real[-1]
     key=lambda expect: np.abs(expect['tracking_phi'].real[-1])
     # key=lambda expect: np.linalg.norm(prelim_data['current'] - expect['tracking_current'][:len(prelim_data['current'])])
 )
-# data = data[41:20]
-for d in data:
-    if len(prelim_data["phi"]) == len(d["tracking_phi"]):
-        print("good")
-    else:
-        print("bad")
-        print(len(prelim_data["phi"]) - len(d["tracking_phi"]))
-        # exit(1)
-# data = [data[41], data[20]]
+# select = 1
+# data = data[select - 1:select]
+# for d in data:
+#     if len(prelim_data["phi"]) == len(d["tracking_phi"]):
+#         print("good")
+#     else:
+#         print("bad")
+#         print(len(prelim_data["phi"]) - len(d["tracking_phi"]))
+#         # exit(1)
+# data = [data[2], data[3]]
 colouring = np.linspace(0, 1, len(data))
 # plt.figure("control fields and currents")
 # ax1 = plt.subplot(211)
@@ -76,30 +78,38 @@ for expect, color_code in zip(data, colouring):
     # print(np.allclose(expect['tracking_phi'].imag, 0))
 
     ax0.set(xlabel="Time (cycles)", ylabel="$\\Phi(t) - \\theta[\\psi(t)]$")
+    ax0.set_yticks([0])
+    ax0.set_xticks([0])
     # ax0.set_yticks([(3/2) * np.pi, np.pi, np.pi / 2, 0, - np.pi / 2, -np.pi, -(3/2) * np.pi])
     # ax0.set_yticklabels(["$\\frac{3\\pi}{2}$", "$\\pi$", "$\\frac{\\pi}{2}$", "$0$", "$-\\frac{\\pi}{2}$", "$-\\pi$", "$-\\frac{3\\pi}{2}$"])
     ax0.plot(
         t_p.times,
-        expect['tracking_phi'][:len(t_p.times)].real  - np.angle(expect["tracking_neighbour"][:len(t_p.times)]),
+        np.abs(expect['tracking_neighbour'][:len(t_p.times)]),
         color=plt.cm.jet(color_code),
         alpha=0.5,
-        linewidth=1,
+        linewidth=2.5,
     )
-ax0.hlines(-np.pi/2, 0, 2 * np.pi, linestyles="dashed")
+# ax0.hlines(np.pi/2, 0, 2, linestyles="dashed")
 alpha = 0.5
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+fig, (ax1, ax2) = plt.subplots(2, 1)
 for expect, color_code in zip(data, colouring):
     # print(np.allclose(expect['tracking_phi'].imag, 0))
 
     ax1.set(xlabel="Time (cycles)", ylabel="$\\Phi(t)$")
-    ax1.set_yticks([(3/2) * np.pi, np.pi, np.pi / 2, 0, - np.pi / 2, -np.pi, -(3/2) * np.pi])
-    ax1.set_yticklabels(["$\\frac{3\\pi}{2}$", "$\\pi$", "$\\frac{\\pi}{2}$", "$0$", "$-\\frac{\\pi}{2}$", "$-\\pi$", "$-\\frac{3\\pi}{2}$"])
+    ax1.set_yticks(
+        [(5/2) * np.pi, 2 * np.pi, (3/2) * np.pi, np.pi, np.pi / 2, 0, - np.pi / 2, -np.pi, -(3/2) * np.pi,
+         -2 * np.pi, -(5/2) * np.pi, -3 * np.pi]
+    )
+    ax1.set_yticklabels(
+        ["$\\frac{5\\pi}{2}$", "$2\\pi$", "$\\frac{3\\pi}{2}$", "$\\pi$", "$\\frac{\\pi}{2}$", "$0$",
+         "$-\\frac{\\pi}{2}$", "$-\\pi$", "$-\\frac{3\\pi}{2}$", "$-2\\pi$", "$-\\frac{5\\pi}{2}$", "$-3\\pi$"]
+    )
     ax1.plot(
         t_p.times,
         expect['tracking_phi'][:len(t_p.times)].real,
         color=plt.cm.jet(color_code),
         alpha=alpha,
-        linewidth=1,
+        linewidth=2,
     )
 # plt.subplot(211)
 # plt.plot(t_p.times, prelim_data['phi'])
@@ -127,47 +137,26 @@ for expect, color_code in zip(data, colouring):
         expect['tracking_current'][:len(t_p.times)].real,
         color=plt.cm.jet(color_code),
         alpha=alpha,
-        linewidth=1,
+        linewidth=2,
     )
 # data = data[-15:]
 # colouring = np.linspace(0, 1, len(data))
-for expect, color_code in zip(data, colouring):
-    # print(np.allclose(expect['tracking_current'].imag, 0))
-
-    ax3.set(xlabel="Time (cycles)", ylabel="$H(t)$")
-    # ax3.set_yticks([np.pi / 2, - np.pi / 2])
-    # ax3.set_yticklabels(["$\\frac{\\pi}{2}$", "$-\\frac{\\pi}{2}$"])
-    ax3.plot(
-        t_p.times,
-        expect['tracking_energy'][:len(t_p.times)].real,
-        color=plt.cm.jet(color_code),
-        alpha=alpha,
-        linewidth=1,
-    )
+# for expect, color_code in zip(data, colouring):
+#     # print(np.allclose(expect['tracking_current'].imag, 0))
+#
+#     ax3.set(xlabel="Time (cycles)", ylabel="$H(t)$")
+#     # ax3.set_yticks([np.pi / 2, - np.pi / 2])
+#     # ax3.set_yticklabels(["$\\frac{\\pi}{2}$", "$-\\frac{\\pi}{2}$"])
+#     ax3.plot(
+#         t_p.times,
+#         expect['tracking_energy'][:len(t_p.times)].real,
+#         color=plt.cm.jet(color_code),
+#         alpha=alpha,
+#         linewidth=1,
+#     )
 
 plt.figure("Fourier Transforms")
-# phi = prelim_data['phi']
-# N = len(phi)
-# k = np.arange(N)
-#
-# # frequency range
-# omegas = (k - N / 2) * np.pi / (0.5 * t_p.times[-1])
-#
-# # spectra of the
-# spectrum = np.abs(
-#     # used windows fourier transform to calculate the spectra
-#     # rhttp://docs.scipy.org/doc/scipy/reference/tutorial/fftpack.html
-#     fftpack.fft((-1) ** k * signal.blackman(N) * phi)
-# ) ** 2
-# spectrum /= spectrum.max()
-#
-# # plt.subplot(211)
-# plt.semilogy(omegas, spectrum)
-# # plt.xlim(0,20)
-# plt.show()
-
 plt.subplot(212)
-
 prev_max = 0
 phi = prelim_data['current'][:len(t_p.times)].real
 plt.ylabel("$\\mathcal{F}[J(t)]$")
@@ -276,6 +265,75 @@ plt.xlabel('Harmonic Order')
 # plt.ylabel('HHG spectra of $\\Phi(t)$')
 # plt.legend(loc='upper right')
 plt.show()
+
+plt.figure("num")
+for expect, colour_code in zip(data, colouring):
+    xj = 0
+    for j in range(lat.nx - 1):
+        plt.plot(
+            t_p.times[:],
+            expect["tracking_pnumbersite" + str(j)][:len(t_p.times)].real,
+            color=plt.cm.jet(colour_code),
+            alpha=alpha
+        )
+    if lat.pbc:
+        plt.plot(
+            t_p.times[:],
+            expect["tracking_pnumbersite" + str(lat.nx - 1)][:len(t_p.times)].real,
+            color=plt.cm.jet(colour_code),
+            alpha=alpha
+        )
+
+
+plt.xlabel("Time (cycles)")
+plt.ylabel("$f(t)$")
+plt.tight_layout()
+plt.show()
+
+# plt.figure("Qsys(t)")
+# for expect, colour_code in zip(data, colouring):
+#     plt.plot(
+#         t_p.times[:-1],
+#         cumtrapz(-(1/lat.a)*np.gradient(expect['tracking_phi'][:len(t_p.times)].real, t_p.times[:])
+#         *expect['tracking_current'][:len(t_p.times)].real,t_p.times[:]),
+#         color=plt.cm.jet(colour_code),
+#         alpha=alpha
+#     )
+#
+# plt.xlabel("Time (cycles)")
+# plt.ylabel("$f(t)$")
+# plt.tight_layout()
+# plt.show()
+#
+# plt.figure("Qcoup(t)")
+# for expect, colour_code in zip(data, colouring):
+#     plt.plot(
+#         t_p.times[:-1],
+#         -cumtrapz(-(1/lat.a)*np.gradient(expect['tracking_phi'][:len(t_p.times)].real, t_p.times[:])
+#         *expect['tracking_current'][:len(t_p.times)].real,t_p.times[:]),
+#         color=plt.cm.jet(colour_code),
+#         alpha=alpha
+#     )
+#
+# plt.xlabel("Time (cycles)")
+# plt.ylabel("$f(t)$")
+# plt.tight_layout()
+# plt.show()
+#
+# plt.figure("W(t)")
+# for expect, colour_code in zip(data, colouring):
+#     xj = 0
+#     for j in range(lat.nx - 1):
+#         xj += expect["tracking_pnumbersite" + str(j)] * (j + 1) / lat.nx
+#     if lat.pbc:
+#         xj += expect["tracking_pnumbersite" + str(lat.nx - 1)]
+#     Ij = -np.gradient(np.gradient((lat.a)*expect['tracking_phi'][:len(t_p.times)].real, t_p.times[:]), t_p.times[:]) * xj[:-1]
+#     plt.plot(
+#         t_p.times[:-1],
+#         cumtrapz(Ij, t_p.times[:]),
+#         color=plt.cm.jet(colour_code),
+#         alpha=alpha
+#     )
 
 # plt.figure("Spectra Difference")
 # expect1 = data[0]

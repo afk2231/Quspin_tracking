@@ -32,7 +32,7 @@ lat = hhg(field=param.field, nup=param.N_up, ndown=param.N_down, nx=param.L, ny=
           , a=param.a, pbc=param.pbc)
 
 """setup our evolution time parameters"""
-t_p = time_evolution_params(perimeter_params=lat, cycles=1, nsteps=int(2e3), plotting=1)
+t_p = time_evolution_params(perimeter_params=lat, cycles=5, nsteps=int(2e3), plotting=1)
 
 """prepare to load our data to be plotted"""
 outfile = './Data/expectations:{}sites-{}up-{}down-{}t0-{}U-{}cycles-{}steps-{}pbc.npz'.format(param.L, param.N_up,
@@ -49,7 +49,16 @@ plt.xlabel("Time (cycles)")
 plt.ylabel("$\\Phi(t)$")
 plt.grid(True)
 plt.tight_layout()
+plt.plot(t_p.times, np.pi/2 * np.ones_like(t_p.times))
 plt.plot(t_p.times, expectations['phi'])
+plt.show()
+
+plt.figure("Electric field")
+plt.xlabel("Time (cycles)")
+plt.ylabel("$E(t)$")
+plt.grid(True)
+plt.tight_layout()
+plt.plot(t_p.times, -np.gradient(expectations['phi'], t_p.times))
 plt.show()
 
 """Plotting current"""
@@ -103,6 +112,19 @@ if lat.pbc:
     plt.grid(True)
     plt.tight_layout()
     plt.plot(t_p.times, expectations["num" + str(lat.nx -1)])
+
+plt.figure("xj")
+xj = 0
+for j in range(lat.nx - 1):
+    xj += expectations["num" + str(j)] * (j+1)
+if lat.pbc:
+    xj += expectations["num" + str(lat.nx - 1)] * lat.nx
+plt.xlabel("Time (cycles)")
+plt.ylabel("$f(t)$")
+plt.grid(True)
+plt.tight_layout()
+plt.plot(t_p.times, xj)
+plt.show()
 
 plt.figure("Jj")
 for j in range(lat.nx - 1):

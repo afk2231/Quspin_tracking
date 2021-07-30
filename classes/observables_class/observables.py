@@ -165,8 +165,13 @@ class observables:
         if self.continuity:
             obs_deepcopy.number = self.number.copy()
             for j in range(self.fermihubbard.perimeter_params.nx - 1):
-                obs_deepcopy.numbersite[j] = self.numbersite[j]
-                obs_deepcopy.currentsite[j] = self.currentsite[j]
+                obs_deepcopy.numbersite[j] = self.numbersite[j].copy()
+                obs_deepcopy.currentsite[j] = self.currentsite[j].copy()
+            if self.fermihubbard.perimeter_params.pbc:
+                obs_deepcopy.numbersite[self.fermihubbard.perimeter_params.nx - 1] \
+                    = self.numbersite[self.fermihubbard.perimeter_params.nx - 1].copy()
+                obs_deepcopy.currentsite[self.fermihubbard.perimeter_params.nx - 1] \
+                    = self.currentsite[self.fermihubbard.perimeter_params.nx - 1].copy()
 
         return obs_deepcopy
 

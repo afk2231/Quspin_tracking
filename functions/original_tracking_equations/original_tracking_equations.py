@@ -24,10 +24,11 @@ def phi_J_track_with_branches(perimeter_params, current_time, J_target, fermihub
     # Solver is sensitive to whether we specify phi as real or not!
     # phi = np.sign(phi.real)*np.abs(phi)
     # phi = phi.real
-    alpha = 0.5
+    alpha = 1
     beta = 1
     if not np.isclose(phi.imag, 0):
         phi = phi.real + alpha * np.sign(phi.imag) * (np.abs(phi.imag))**(beta)
+        # phi = phi.real + alpha * np.sign(phi.real) * (np.abs(phi.imag)) ** (beta)
         # phi = np.sign(phi.real) * np.abs(phi)
     else:
         phi = phi.real
@@ -158,7 +159,22 @@ def original_tracking_implicit_bd_six_step(current_time, psi, psi_nm1, psi_nm2, 
                                            fhm, J_target, l, bn, tp):
     psi_np1 = fixed_point(backwards_diff_six_step,
                           psi,
-                          args=(current_time, psi, psi_nm1, psi_nm2, psi_nm3, psi_nm4, psi_nm5, tp, fhm, J_target, l, bn)
+                          args=(
+                              current_time,
+                              psi,
+                              psi_nm1,
+                              psi_nm2,
+                              psi_nm3,
+                              psi_nm4,
+                              psi_nm5,
+                              tp,
+                              fhm,
+                              J_target,
+                              l,
+                              bn
+                          ),
+                          xtol=1e-14,
+                          maxiter=10000
                           )
     psi_n = psi
     return [psi_np1, psi_n, psi_nm1, psi_nm2, psi_nm3, psi_nm4]
@@ -169,12 +185,12 @@ def tracking_radau_IIa_5th(ki_0, current_time, psi, fhm, target, l, bn, tp, alph
     for ki, i in zip(ki_0, range(len(ki_0))):
         t_i = current_time + tp.delta * alpha[i]
         psi_i = psi + tp.delta * np.dot(beta[i], ki_0)
-        ki_1[i] = original_tracking_evolution_with_branches(t_i, psi_i, fhm, target, l, bn)
+        ki_1[i] = tp.delta * original_tracking_evolution_with_branches(t_i, psi_i, fhm, target, l, bn)
     return ki_1
 
 
 def original_tracking_radau_IIa_5th(current_time, psi, fhm, J_target, l, bn, tp, k1_0, k2_0, k3_0):
-    alpha = [(2/5) - np.sqrt(6)/10,(2/5) + np.sqrt(6)/10, 1]
+    alpha = [(2/5) - np.sqrt(6)/10, (2/5) + np.sqrt(6)/10, 1]
     beta = [
         [(11/45) - 7 * np.sqrt(6)/360, (37/225) - 169 * np.sqrt(6)/1800, -(2/225) + np.sqrt(6)/75],
         [(37/225) + 169 * np.sqrt(6)/1800, (11/45) + 7 * np.sqrt(6)/360, -(2/225) - np.sqrt(6)/75],
@@ -188,4 +204,29 @@ def original_tracking_radau_IIa_5th(current_time, psi, fhm, J_target, l, bn, tp,
     )
 
     return [psi + ((4/9) - np.sqrt(6)/36) * k1 + ((4/9) + np.sqrt(6)/36) * k2 + (1/9) * k3, k1, k2, k3]
+
+def original_tracking_euler(psi_np1_0, psi, current_time, fhm, target, l, bn, tp):
+
+    psi_np1 = psi + tp.delta * original_tracking_evolution_with_branches(
+        current_time + tp.delta,
+        psi + tp.delta * psi_np1_0,
+        fhm,
+        target,
+        l,
+        bn
+    )
+
+    return psi_np1
+
+def original_tracking_implicit_euler(current_time, psi, fhm, J_target, l, bn, tp):
+
+    psi_np1 = fixed_point(
+        original_tracking_euler,
+        psi,
+        args=(psi, current_time, fhm, J_target, l, bn, tp),
+        xtol=1e-14,
+        maxiter=100000
+    )
+
+    return psi_np1
 

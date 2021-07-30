@@ -17,6 +17,7 @@ from functions.original_tracking_equations.original_tracking_equations import or
 from functions.original_tracking_equations.original_tracking_equations import original_tracking_implicit_bd_four_step
 from functions.original_tracking_equations.original_tracking_equations import original_tracking_implicit_bd_six_step
 from functions.original_tracking_equations.original_tracking_equations import original_tracking_radau_IIa_5th
+from functions.original_tracking_equations.original_tracking_equations import original_tracking_implicit_euler
 
 
 
@@ -243,7 +244,7 @@ def schrod_evol(start_time, psi_0, t_p, j_target, param, l, obs, branch_num, bra
         phi_p = ((-1)**(branch_num))*(phi - theta - branch_num * PI)
         pi_tol = 9e-3
         if split_check:
-            if (PI / 2 - (1.1 * pi_tol)) > phi_p > -(PI / 2 - (1.1 * pi_tol)):
+            if (PI / 2 - (1.2 * pi_tol)) > phi_p > -(PI / 2 - (1.1 * pi_tol)):
                 split_check = False
 
         # check to see if the control field is near a branch point by using the formula
@@ -378,6 +379,7 @@ if __name__ == "__main__":
 
     # initialize the observables class
     obser = observables(psi_t, J_target(0.0), phi_J_track(lat, 0.0, J_target, FHM, psi_t), FHM, continuity=True)
+
     # obser.initialize_work()
 
     # make a directory for this specific set of parameters
